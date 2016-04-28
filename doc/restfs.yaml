@@ -1,0 +1,281 @@
+swagger: '2.0'
+
+info:
+  version: "0.0.1"
+  title: restfs
+schemes:
+  - http
+  - https
+host: 172.20.124.233
+
+paths:
+  /files/{id}:
+    get:
+      tags:
+        - file
+      summary: Get a file
+      description: "Create a new file"
+      operationId: getFile
+      parameters:
+        - in: path
+          name: id
+          description: ID of the file
+          required: true
+          type: integer
+      responses:
+        "201":
+          description: successful operation
+      security:
+        - token: []
+
+  /files/{dirid}/{name}:
+    post:
+      tags:
+        - file
+      summary: Create a new file
+      description: | 
+        Create a new file. <br>
+          Example for curl request is: <br>
+          $ curl 'http://host/files/16/f9' --data-binary @path/to/file.txt -X POST -H 'Content-Type: text/plain' -H 'token: aV912axDLixkFo2hap5mlxLVLqdwKkcsDluDKrPd' -v
+      operationId: createFile
+      parameters:
+        - in: path
+          name: dirid
+          description: ID of a directory. Set 0 for root directory.
+          required: true
+          type: integer
+        - in: path
+          name: name
+          description: Name for a new file.
+          required: true
+          type: string
+        - in: header
+          name: Content-Type
+          description: Content-Type of the file.
+          required: true
+          type: string
+        - in: header
+          name: Content-Length
+          description: Size of the file.
+          required: true
+          type: integer
+#        - in: body
+#          name: content
+#          description: content of the file.
+#          required: true
+#          type: 
+#      body:
+#        binary/octet-stream:
+      responses:
+        "201":
+          description: successful operation
+      security:
+        - token: []
+          
+  /users/login:
+    post:
+      tags:
+        - user
+      summary: Login user into the system
+      description: "Create a new user session"
+      operationId: loginUser
+      produces:
+        - application/json
+      parameters:
+        - in: formData
+          name: email
+          description: The email
+          required: true
+          type: string
+        - in: formData
+          name: password
+          description: The password for login in clear text. 
+          required: true
+          type: string
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            $ref: '#/definitions/Token'
+        "400":
+          description: Invalid username/password supplied
+          schema:
+            $ref: '#/definitions/errorModel'
+
+#    get:
+#      tags:
+#        - user
+#      summary: Logs user into the system
+#      description: ""
+#      operationId: UserInfo
+#      produces:
+#        - application/json
+#      responses:
+#        "200":
+#          description: successful operation
+#          schema:
+#            $ref: '#/definitions/Token'
+#        "400":
+#          description: Invalid username/password supplied
+##          schema:
+#            $ref: '#/definitions/errorModel'
+#      security:
+#        - token: []
+
+  /users/add:
+    post:
+      tags:
+        - user
+      summary: Logs user into the system
+      description: ""
+      operationId: addUser
+      produces:
+        - application/json
+      parameters:
+        - in: formData
+          name: email
+          description: The email
+          required: true
+          type: string
+        - in: formData
+          name: password
+          description: The password for login in clear text
+          required: true
+          type: string
+      responses:
+        "201":
+          description: successful operation
+        "409":
+          description: Email exist
+          schema:
+            $ref: '#/definitions/errorModel'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/errorModel'
+
+  /dirs/{id}:
+    get:
+      tags:
+        - directory
+      summary: list files
+      description: List files and dirs
+      operationId: ListDir
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          description: ID of a directory. Set 0 for root directory.
+          required: true
+          type: integer
+      responses:
+        "200":
+#          body:
+#            application/json:
+#              example: |
+#                [
+#                  {
+#                    "id": 16,
+#                    "is_dir": true,
+#                    "name": "testw"
+#                  },
+#                  {
+#                    "id": 46,
+#                    "is_dir": false,
+#                    "name": "f12"
+#                  }
+#                ]
+          description: successful operation
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Object'
+        401:
+          description: Unauthorased
+          schema:
+            $ref: '#/definitions/errorModel'
+        404:
+          description: Not found
+          schema:
+            $ref: '#/definitions/errorModel'
+      security:
+        - token: []
+  /dirs:
+    post:
+      tags:
+        - directory
+      summary: Create a directory
+      description: Create a new directory
+      operationId: CreateDir
+      produces:
+        - application/json
+      parameters:
+        - in: formData
+          name: id
+          description: id of parrent directory
+          required: false
+          type: integer
+        - in: formData
+          name: name
+          description: name of newdirectory
+          required: true
+          type: string
+          
+      responses:
+        "200":
+          description: successful operation
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Object'
+        "401":
+          description: Unauthorased
+          schema:
+            $ref: '#/definitions/errorModel'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/errorModel'
+      security:
+        - token: []
+          
+definitions:
+  Token:
+    type: object
+    properties:
+      token:
+        type: string
+        description: Session token for user.
+  Object:
+    type: object
+    properties:
+      id:
+        type: string
+        description: Object id
+      is_dir:
+        type: boolean
+        description: Object type
+      name:
+        type: string
+        description: Object name
+  errorModel:
+    type: object
+    required:
+      - code
+      - message
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+securityDefinitions:
+  token:
+    type: apiKey
+    name: token
+    in: header
+    description: Session token for user.
+
+    
+  
