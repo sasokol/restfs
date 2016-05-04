@@ -7,6 +7,7 @@
 #include <map>
 #include <exception>
 
+
 #include <pqxx/pqxx>
 #include <libpq-fe.h>
 
@@ -40,7 +41,7 @@ class Base_Object: public Property
 class User: public Base_Object
 {
 	public:
-		User(pqxx::connection *_db);
+		User(Router *_r);
 		~User();
 		std::string GetProperty(std::string name);
 		void SetProperty(std::string name, std::string value);
@@ -60,6 +61,8 @@ class User: public Base_Object
 		unsigned int Id;
 		unsigned int root_dirId;
 		std::string token;
+		Router *router;
+		
 	
 };
 

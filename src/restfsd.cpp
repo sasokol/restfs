@@ -21,9 +21,9 @@
 //хранит дескриптор открытого сокета
 std::atomic_int socketId;
 
-void GetFile(Router *r, FCGX_Request *request) 
+void GetFile(Router *r) 
 {
-	User user(r->db);
+	User user(r);
 	user.login(r->GetInHeader("HTTP_TOKEN"));
 
 	unsigned int id = std::stoul(r->cm[1]);
@@ -32,9 +32,9 @@ void GetFile(Router *r, FCGX_Request *request)
 	file.Get(id);
 }
 
-void PutFile(Router *r, FCGX_Request *request) 
+void PutFile(Router *r) 
 {
-	User user(r->db);
+	User user(r);
 	user.login(r->GetInHeader("HTTP_TOKEN"));
 	Directory dir(r->db, &user);
 
@@ -50,9 +50,9 @@ void PutFile(Router *r, FCGX_Request *request)
 	r->SetStatus(Httpstatus::Created);
 }
 
-void  PostCreateDir(Router *r, FCGX_Request *request) 
+void  PostCreateDir(Router *r) 
 {
-	User user(r->db);
+	User user(r);
 	user.login(r->GetInHeader("HTTP_TOKEN"));
 	
 	Directory dir(r->db, &user);
@@ -69,9 +69,9 @@ void  PostCreateDir(Router *r, FCGX_Request *request)
 	
 }
 
-void  GetDir(Router *r, FCGX_Request *request) 
+void  GetDir(Router *r) 
 {
-	User user(r->db);
+	User user(r);
 	user.login(r->GetInHeader("HTTP_TOKEN"));
 	
 	Directory dir(r->db, &user);
@@ -90,16 +90,16 @@ void  GetDir(Router *r, FCGX_Request *request)
 }
 
 
-void  OptDirs(Router *r, FCGX_Request *request) 
+void  OptDirs(Router *r) 
 {
 	
 	r->SetStatus(Httpstatus::OK);
 }
 
 
-void  UsersInfo (Router *r, FCGX_Request *request) 
+void  UsersInfo (Router *r) 
 {
-	User user(r->db);
+	User user(r);
 	user.login(r->GetInHeader("HTTP_TOKEN"));
 	
 	
@@ -110,30 +110,30 @@ void  UsersInfo (Router *r, FCGX_Request *request)
 	r->AddContent("User info\r\n");
 }
 
-void OptUsersLogin(Router *r, FCGX_Request *request)
+void OptUsersLogin(Router *r)
 {
 	r->SetStatus(Httpstatus::OK);
 	r->AddHeader("Content-Type", "text/plain");
 }
 
-void OptUsersAdd(Router *r, FCGX_Request *request)
+void OptUsersAdd(Router *r)
 {
 	r->SetStatus(Httpstatus::OK);
 }
 
 
-void PostUsersAdd(Router *r, FCGX_Request *request)
+void PostUsersAdd(Router *r)
 {
-	User user(r->db);
+	User user(r);
 	Json::Value JsonContentIn = r->ParseJsonIn();
 	user.add(JsonContentIn);
 	
 	r->SetStatus(user.HttpStatus);
 }
 
-void PostUsersLogin(Router *r, FCGX_Request *request)
+void PostUsersLogin(Router *r)
 {
-	User user(r->db);
+	User user(r);
 	Json::StyledWriter sw;
 	
 	Json::Value JsonContentIn = r->ParseJsonIn();

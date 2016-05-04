@@ -50,7 +50,6 @@ Router::Router(FCGX_Request *_request, Config *_conf)
 	}
 	
     log = new ioremap::elliptics::file_logger(ellipcs_logfile, ell_log_level);
-//    ioremap::elliptics::node el_node;
 
     n= new ioremap::elliptics::node( ioremap::elliptics::logger(*log, blackhole::log::attributes_t()) );
 	
@@ -86,6 +85,15 @@ Router::Router(FCGX_Request *_request, Config *_conf)
 
 	buflen = conf->GetInteger("elliptics","buflen",8193);
 	
+	pqxx::work w(*db);
+	pqxx::result *r = new pqxx::result(w.exec("SELECT cast(extract(epoch from now()) as integer) as cur_time"));
+	std::time_t current = std::time(nullptr);
+	
+	auto row = r->begin();
+	std::time_t psql = row["cur_time"].as<std::time_t>();
+	time_offset = psql - current;
+	
+	w.commit();
 	Cleanup();
 
 }
@@ -139,16 +147,13 @@ void Router::Run()
 	
 	if (func != nullptr) 
 	{
-		func(this, request);
+		func(this);
 	} else
 	{
 		DefaultHandler();
 	}
 
-	//AcceptHeaders();
 	AcceptContent();
-
-	//Cleanup();
 }
 
 void Router::ParseInHeaders()

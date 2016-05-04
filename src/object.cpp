@@ -228,6 +228,7 @@ Json::Value Directory::Ls()
 		result[i]["is_dir"] = row["is_dir"].as<bool>();
 		++i;
 	}
+	w.commit();
 	return result;
 }
 
@@ -255,9 +256,10 @@ std::string Directory::GetTree()
 }
 
 
-User::User(pqxx::connection *_db)
+User::User(Router *_r)
 {
-	db = _db;
+	router = _r;
+	db = router->db;
 }
 
 User::~User()
@@ -278,17 +280,21 @@ void User::login(std::string _token)
 {
 	pqxx::work w(*db);
 	token = _token;
-	r = new pqxx::result(w.exec("SELECT userid FROM sessions where token=" + w.quote(token) +" and now() < expire" ));
+	r = new pqxx::result(w.exec("SELECT userid, root_dir, cast(extract(epoch from expire) as integer) as expire FROM sessions join users ON (userid = id) WHERE token=" + w.quote(token) +" and now() < expire" ));
 	if (r->empty()) throw Error(Errors::TOKEN_INVALID);
 	
 	auto row = r->begin();
 	Id = row["userid"].as<unsigned int>();
-	
-	r = new pqxx::result(w.exec("SELECT root_dir FROM users where id=" + std::to_string(Id) ));
-	row = r->begin();
+
 	root_dirId = row["root_dir"].as<unsigned int>();
-	
-	w.exec("UPDATE sessions set expire = now()+'1 day'::interval where (expire - '22 hours'::interval) < now() and token=" + w.quote(token) );
+	std::time_t expire = row["expire"].as<std::time_t>();
+	std::time_t current = std::time(nullptr);
+
+	if ( (expire - current - 79200 - router->time_offset) < 0 )
+	{
+		w.exec("UPDATE sessions set expire = now()+'1 day'::interval where token=" + w.quote(token) );
+	}
+
 	w.commit();
 	HttpStatus = Httpstatus::OK;
 	ContentType = "text/plain; charset=utf-8";

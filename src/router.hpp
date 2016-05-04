@@ -6,6 +6,7 @@
 #include <string>
 #include <functional>
 #include <map>
+#include <ctime>
 
 //#include <regex>
 #include <boost/regex.hpp>
@@ -32,25 +33,22 @@
 class Router 
 {
 	public:
-		typedef std::function< void(Router *me, FCGX_Request *_request)> Func;
+		typedef std::function< void(Router *me)> Func;
 		typedef std::map<std::string, Router::Func> RgexUrl;
 
 		pqxx::connection* db;
 		unsigned int buflen;
 		ioremap::elliptics::session *elliptics_client;
-		//ioremap::elliptics::node n;
 		
 		Router(FCGX_Request *_request, Config *_conf);
 		
 		void addHandler(std::string method,std::string url, Router::Func handler);
 		void Run();
 		
-		//std::map<std::string, Router::RgexUrl> GetFuncTable();
 		std::multimap<std::string,std::string> GetInHeaders();
 
 		void AddHeader(std::string header,std::string value);
 		void AddHeader(std::string header,long int value);
-		//void AddHeader(std::string header,Httpstatus value);
 		void SetStatus(Httpstatus value);
 		
 		void AddContent(std::string part);
@@ -64,6 +62,7 @@ class Router
 		void ContentManualy();
 		void Cleanup();
 		FCGX_Request *request;
+		std::time_t time_offset;
 	
 	private:
 
@@ -85,6 +84,7 @@ class Router
 		const char *ellipcs_logfile;
 		ioremap::elliptics::file_logger *log;
 		ioremap::elliptics::node *n;
+		
 };
 
 #endif
