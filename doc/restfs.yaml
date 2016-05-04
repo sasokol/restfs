@@ -6,10 +6,36 @@ info:
 schemes:
   - http
   - https
-host: 172.20.124.233
+host: 192.168.56.101
 
 paths:
   /files/{id}:
+    delete:
+      tags:
+        - file
+      summary: Delete a file
+      description: Delete a fine
+      operationId: DelFile
+      parameters:
+        - in: path
+          name: id
+          description: ID of a file.
+          required: true
+          type: integer
+      responses:
+        204:
+          description: OK
+        "404":
+          description: File not found
+          schema:
+            $ref: '#/definitions/errorModel'
+        "409":
+          description: ID is not defined
+          schema:
+            $ref: '#/definitions/errorModel'
+      security:
+        - token: []
+    
     get:
       tags:
         - file
@@ -155,6 +181,28 @@ paths:
             $ref: '#/definitions/errorModel'
 
   /dirs/{id}:
+    delete:
+      tags:
+        - directory
+      summary: delete directory
+      description: Delete the directory
+      operationId: DelDir
+      parameters:
+        - in: path
+          name: id
+          description: ID of a directory. Set 0 for root directory.
+          required: true
+          type: integer
+      responses:
+        204:
+          description: OK
+        409:
+          description: Not Empty
+          schema:
+            $ref: '#/definitions/errorModel'
+      security:
+        - token: []
+  
     get:
       tags:
         - directory
@@ -171,21 +219,6 @@ paths:
           type: integer
       responses:
         "200":
-#          body:
-#            application/json:
-#              example: |
-#                [
-#                  {
-#                    "id": 16,
-#                    "is_dir": true,
-#                    "name": "testw"
-#                  },
-#                  {
-#                    "id": 46,
-#                    "is_dir": false,
-#                    "name": "f12"
-#                  }
-#                ]
           description: successful operation
           schema:
             type: array
@@ -269,6 +302,8 @@ definitions:
         type: integer
         format: int32
       message:
+        type: string
+      ext:
         type: string
 securityDefinitions:
   token:

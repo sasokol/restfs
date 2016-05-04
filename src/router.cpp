@@ -278,7 +278,6 @@ Json::Value Router::ParseJsonIn()
 	{
 		std::cerr << "Content-Type isn't application/json";
 		SetStatus(Httpstatus::BadRequest);		
-//		return;
 	}
 	
 	long int ContentLength = GetInHeaderInt("HTTP_CONTENT_LENGTH");
@@ -286,7 +285,6 @@ Json::Value Router::ParseJsonIn()
 	{
 		std::cerr << "Request Entity Too Large";
 		SetStatus(Httpstatus::RequestEntityTooLarge);
-//		return;
 	}
 
 	std::string Content = "";
@@ -307,7 +305,6 @@ Json::Value Router::ParseJsonIn()
 	    std::cerr  << "Failed to parse configuration\n"
 	               << reader.getFormattedErrorMessages();
 	    SetStatus(Httpstatus::BadRequest);
-//	    return;
 	}
 	return JsonContentIn;
 

@@ -17,8 +17,6 @@
 #include "router.hpp"
 #include "error.hpp"
 
-
-//хранит дескриптор открытого сокета
 std::atomic_int socketId;
 
 void GetFile(Router *r) 
@@ -31,6 +29,29 @@ void GetFile(Router *r)
 	File file(r, &user);
 	file.Get(id);
 }
+
+void DelFile(Router *r) 
+{
+	User user(r);
+	user.login(r->GetInHeader("HTTP_TOKEN"));
+
+	unsigned int id = std::stoul(r->cm[1]);
+	
+	
+	
+	if ( id > 0 ){
+		 File file(r, &user);
+		 file.Del(id);
+	}
+	else 
+	{
+		throw Error(Errors::ID_NDEFINED);
+	}
+	
+	r->SetStatus(Httpstatus::NoContent);
+	
+}
+
 
 void PutFile(Router *r) 
 {
@@ -87,6 +108,22 @@ void  GetDir(Router *r)
 	r->AddHeader("Content-Type", "application/json; charset=utf-8");
 	r->AddContent(sw.write(result).c_str());
 	
+}
+
+
+void  DelDir(Router *r) 
+{
+	User user(r);
+	user.login(r->GetInHeader("HTTP_TOKEN"));
+	
+	Directory dir(r->db, &user);
+	unsigned int id = std::stoul(r->cm[1]);
+	Json::Value result;
+
+	if ( id > 0 ) dir.Del(id);
+	else throw Error(Errors::ID_NDEFINED);
+	
+	r->SetStatus(Httpstatus::NoContent);
 }
 
 
@@ -173,10 +210,12 @@ static void *doit(int id, Config &conf)
 	router.addHandler("OPTIONS",	"/dirs/(?<id>\\d+)",	&OptDirs);
 	
 	router.addHandler("POST",		"/dirs", 				&PostCreateDir);
-	router.addHandler("GET",		"/dirs/(?<id>\\d+)",	&GetDir);
+	router.addHandler("GET",		"/dirs/(\\d+)",			&GetDir);
+	router.addHandler("DELETE",		"/dirs/(\\d+)",			&DelDir);
 	
 	router.addHandler("POST",		"/files/(\\d+)/(.+)",	&PutFile);
 	router.addHandler("GET",		"/files/(\\d+)",		&GetFile);
+	router.addHandler("DELETE",		"/files/(\\d+)",		&DelFile);
 
 
     for(;;)
@@ -257,20 +296,14 @@ int main(int argc, char **argv)
     std::thread *id = new std::thread[THREAD_COUNT];
 
 
-	//инициализация библилиотеки
 	FCGX_Init();
 
-	//открываем новый сокет
 	socketId.store( FCGX_OpenSocket(conf.get("main","listen").c_str(), 20) );
 	if(socketId < 0)
 	{
-		//ошибка при открытии сокета
 		printf("Socket isn't opened\n");
 		return 1;
 	}
-//    	printf("Socket is opened\n");
-
-
         
 	//~ int pid;	
 	//~ pid = fork();
@@ -284,14 +317,12 @@ int main(int argc, char **argv)
 		//~ umask(0);
 		//~ setsid();
 		//~ //chdir("/home/sokol");
-		//~ создаём рабочие потоки
 		for(i = 0; i < THREAD_COUNT; i++)
 		{
 			id[i] = std::thread( doit, i, std::ref(conf) );
 		}
 		//~ sleep(1);
 		//~ std::cout << "main1 " <<  conf.get("test","test") << std::endl;
-		//ждем завершения рабочих потоков
 		//~ for(i = 0; i < THREAD_COUNT; i++)
 		//~ {
 			//~ id[i].join();

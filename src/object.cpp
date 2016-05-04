@@ -22,9 +22,6 @@ void File::Get(unsigned int id)
 	unsigned int file_size = row["size"].as<unsigned int>();
 	unsigned int total = file_size;
 	
-	//~ auto lookup_result = elliptics_client->lookup(key);
-	//~ lookup_result.wait();
-
 	uint64_t len = buflen;
 	uint64_t offset = 0;
 	bool first = true;
@@ -56,6 +53,25 @@ void File::Get(unsigned int id)
 
 	w.commit();
 }
+
+void File::Del(unsigned int id)
+{
+	pqxx::work w(*db);
+	r = new pqxx::result( w.exec("SELECT key,size,ctype,name from objects where id=" + std::to_string(id) + " and not is_dir and userid=" + std::to_string(user->GetId() ) ) );
+	if (r->empty()) throw Error(Errors::NOT_FOUND);
+	
+	auto row = r->begin();
+	
+	std::string key = row["key"].as<std::string>();
+	unsigned int file_size = row["size"].as<unsigned int>();
+	unsigned int total = file_size;
+	auto async_result = std::move(elliptics_client->remove(key));
+	async_result.wait();
+	w.exec("DELETE from objects where id=" + std::to_string(id) + " and not is_dir and userid=" + std::to_string(user->GetId() ) );
+	w.commit();
+}
+
+
 
 std::string File::Create(Directory *dir, std::string name)
 {
@@ -238,10 +254,30 @@ Json::Value Directory::Ls(unsigned int source_dirid)
 	return Ls();
 }
 
+
+void Directory::Del(unsigned int _dirid)
+{
+	Chdir(_dirid);
+	pqxx::work w(*db);
+	r = new pqxx::result(w.exec("SELECT id,name,is_dir from objects where tree ~ '" + tree + ".*{0,1}' and userid=" + std::to_string(user->GetId())));
+	if (r->empty()) 
+	{
+		std::cerr << "tree="+tree+" userid="+std::to_string(user->GetId());
+		throw Error(Errors::NOT_FOUND);
+	}
+
+	if (r->size() > 1 ) throw Error(Errors::DIR_NOTEMPTY);
+	
+	w.exec("DELETE from objects where tree ~ '" + tree + ".*{0,1}' and userid=" + std::to_string(user->GetId()));
+	w.commit();
+	
+}
+
+
 void Directory::Chdir(unsigned int _id)
 {
 	pqxx::work w(*db);
-	r = new pqxx::result(w.exec("SELECT tree from objects where id=" + std::to_string(_id)));
+	r = new pqxx::result(w.exec("SELECT tree from objects where is_dir and id=" + std::to_string(_id)));
 	if (r->empty()) throw Error(Errors::NOT_FOUND);
 	
 	auto row = r->begin();

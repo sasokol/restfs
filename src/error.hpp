@@ -23,6 +23,8 @@ enum class Errors
 	CTYPE_NDEFINED	= 108,
 	CLENGTH_NDEFINED= 109,
 	CONFIG_NOT_FOUND= 110,
+	ID_NDEFINED		= 111,
+	DIR_NOTEMPTY	= 112,
 	
 	UNKNOWN_ERROR 	= 500
 };
@@ -55,6 +57,8 @@ class Error: public std::exception
 				{Errors::CTYPE_NDEFINED, 	{"Content-Type is not defined", 	Httpstatus::UnsupportedMediaType } },
 				{Errors::CLENGTH_NDEFINED, {"Content-Length is not defined", 	Httpstatus::LengthRequired } },
 				{Errors::CONFIG_NOT_FOUND, {"Config file not found", 			Httpstatus::InternalServerError } },
+				{Errors::ID_NDEFINED, 		{"ID is not defined", 				Httpstatus::BadRequest} },
+				{Errors::DIR_NOTEMPTY, 	{"Directory isn't empty",			Httpstatus::Conflict} },
 				
 				{Errors::UNKNOWN_ERROR, 	{"Unknown error", 					Httpstatus::InternalServerError} }
 			};			

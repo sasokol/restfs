@@ -78,6 +78,7 @@ class Directory: public Base_Object
 		Directory* Create(unsigned int source_dirid, std::string name);
 		Json::Value Ls();
 		Json::Value Ls(unsigned int source_dirid);
+		void Del(unsigned int _dirid);
 		std::string GetTree();
 		
 	private:
@@ -108,6 +109,7 @@ class File: public Base_Object
 		//void Save();
 		std::string Create(Directory *dir, std::string name);
 		void Get(unsigned int id);
+		void Del(unsigned int id);
 };
 
 
