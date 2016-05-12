@@ -27,13 +27,13 @@ Config::~Config()
 	//std::cout << GetData();
 }
 
-std::string Config::get(std::string section, std::string key, std::string v_default)
+std::string Config::get(std::string section, std::string key, std::string v_default) const
 {
 	std::string res = get(section, key);
 	return res.size() ? res : v_default; 
 }
 
-std::string Config::get(std::string section, std::string key)
+std::string Config::get(std::string section, std::string key) const
 {
 	auto sec = _values.find(section);
 	if ( sec != _values.end() )
@@ -132,7 +132,7 @@ void Config::SaveFile(std::string file) {
 	myfile.close();
 }
 
-std::vector<std::string> Config::GetArray(std::string section, std::string name, std::string default_value)
+std::vector<std::string> Config::GetArray(std::string section, std::string name, std::string default_value) const
 {
 	std::vector<std::string> vs;
     std::string text = get(section, name, default_value);
@@ -140,17 +140,17 @@ std::vector<std::string> Config::GetArray(std::string section, std::string name,
     return vs;
 }
 
-std::vector<std::string> Config::GetArray(std::string section, std::string name)
+std::vector<std::string> Config::GetArray(std::string section, std::string name) const
 {
 	return GetArray(section, name, "");
 }
 
-std::vector<ioremap::elliptics::address> Config::GetAddr(std::string section, std::string name)
+std::vector<ioremap::elliptics::address> Config::GetAddr(std::string section, std::string name) const
 {
 	return GetAddr(section,name,"127.0.0.1:1026");
 }
 
-std::vector<ioremap::elliptics::address> Config::GetAddr(std::string section, std::string name, std::string default_value)
+std::vector<ioremap::elliptics::address> Config::GetAddr(std::string section, std::string name, std::string default_value) const
 {
 	std::vector<std::string> vs = GetArray(section, name, default_value);
 	std::vector<ioremap::elliptics::address> result;
@@ -172,7 +172,7 @@ std::vector<ioremap::elliptics::address> Config::GetAddr(std::string section, st
 	return result;
 }
 
-long Config::GetInteger(std::string section, std::string name, long default_value)
+long Config::GetInteger(std::string section, std::string name, long default_value) const
 {
     std::string valstr = get(section, name, "");
     const char* value = valstr.c_str();

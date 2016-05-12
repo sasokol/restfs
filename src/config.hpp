@@ -19,17 +19,17 @@ class Config
 		Config(std::string filename);
 		Config();
 		~Config();
-		std::string get(std::string section, std::string key, std::string v_default);
-		std::string get(std::string section, std::string key);
+		std::string get(std::string section, std::string key, std::string v_default) const;
+		std::string get(std::string section, std::string key) const;
 		
-		long GetInteger(std::string section, std::string name, long default_value);
-		long GetInteger(std::string section, std::string name);
+		long GetInteger(std::string section, std::string name, long default_value) const;
+		long GetInteger(std::string section, std::string name) const;
 		
-		std::vector<std::string> GetArray(std::string section, std::string name, std::string default_value);
-		std::vector<std::string> GetArray(std::string section, std::string name);
+		std::vector<std::string> GetArray(std::string section, std::string name, std::string default_value) const;
+		std::vector<std::string> GetArray(std::string section, std::string name) const;
 		
-		std::vector<ioremap::elliptics::address> GetAddr(std::string section, std::string name, std::string default_value);
-		std::vector<ioremap::elliptics::address> GetAddr(std::string section, std::string name);
+		std::vector<ioremap::elliptics::address> GetAddr(std::string section, std::string name, std::string default_value) const;
+		std::vector<ioremap::elliptics::address> GetAddr(std::string section, std::string name) const;
 		
 		void set(std::string section, std::string key, std::string value);
 		void SaveToFile(std::string file);
