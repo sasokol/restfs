@@ -221,9 +221,7 @@ paths:
         "200":
           description: successful operation
           schema:
-            type: array
-            items:
-              $ref: '#/definitions/Object'
+            $ref: '#/definitions/Directory'
         401:
           description: Unauthorased
           schema:
@@ -292,6 +290,26 @@ definitions:
       name:
         type: string
         description: Object name
+  Directory:
+    type: object
+    properties:
+      id:
+        type: string
+        description: Object id
+      is_dir:
+        type: boolean
+        description: Object type
+      name:
+        type: string
+        description: Object name
+      parrent:
+        $ref: '#/definitions/Object'
+      children:
+        type: array
+        items:
+          $ref: '#/definitions/Object'
+
+
   errorModel:
     type: object
     required:

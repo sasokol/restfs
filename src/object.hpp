@@ -7,6 +7,8 @@
 #include <map>
 #include <exception>
 
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <pqxx/pqxx>
 #include <libpq-fe.h>
@@ -20,6 +22,7 @@
 #include "config.hpp"
 #include "httpstatus.hpp"
 #include "router.hpp"
+
 
 class Property 
 {
@@ -66,6 +69,24 @@ class User: public Base_Object
 	
 };
 
+class LTree
+{
+	private:
+		std::vector<std::string> tree;
+		std::string join( std::vector<std::string>& elements, std::string delimiter );
+		LTree(std::vector<std::string> _tree);
+
+	public:
+		LTree(std::string _tree);
+		LTree Parrent();
+		LTree Root();
+		LTree Child(std::string);
+		LTree Child(int);
+		bool Is_root();
+		std::string Get();
+		int Id();
+};
+
 
 class Directory: public Base_Object
 {
@@ -79,13 +100,13 @@ class Directory: public Base_Object
 		Json::Value Ls();
 		Json::Value Ls(unsigned int source_dirid);
 		void Del(unsigned int _dirid);
-		std::string GetTree();
+		LTree* GetTree();
 		
 	private:
 		pqxx::connection* db;
 		pqxx::result *r;
 		User *user;
-		std::string tree;
+		LTree *tree;
 		unsigned int Id;
 		
 		void SetTree();

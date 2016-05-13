@@ -85,7 +85,7 @@ std::string File::Create(Directory *dir, std::string name)
 
 
 	pqxx::work w(*db);
-	r = new pqxx::result(w.exec("SELECT 1 from objects where tree ~ '" + dir->GetTree() + ".*{1}' and name="+w.quote(name) + " and userid=" + std::to_string(user->GetId())));
+	r = new pqxx::result(w.exec("SELECT 1 from objects where tree ~ '" + dir->GetTree()->Get() + ".*{1}' and name="+w.quote(name) + " and userid=" + std::to_string(user->GetId())));
 	if (!r->empty()) throw Error(Errors::OBJECT_EXIST);
 	std::string key = "";
 	do 
@@ -97,7 +97,7 @@ std::string File::Create(Directory *dir, std::string name)
 	r = new pqxx::result(w.exec("SELECT nextval('objects_id_seq'::regclass)"));
 	auto row = r->begin();
 	unsigned int file_id = row["nextval"].as<unsigned int>();
-	std::string new_tree = dir->GetTree() + "." + std::to_string(file_id);
+	std::string new_tree = dir->GetTree()->Get() + "." + std::to_string(file_id);
 	
     auto async_result = elliptics_client->write_prepare(key, "", 0,total);
     async_result.wait();
@@ -191,23 +191,24 @@ Directory::Directory(pqxx::connection *_db, User *_user)
 void Directory::SetTree()
 {
 	pqxx::work w(*db);
-	r = new pqxx::result(w.exec("SELECT tree FROM objects where id=" + std::to_string(Id) ));
+	r = new pqxx::result(w.exec("SELECT tree FROM objects where id=" + std::to_string(Id) + " and userid=" +  std::to_string(user->GetId() )));
+	if (r->empty()) throw Error(Errors::NOT_FOUND);
 	auto row = r->begin();
-	tree = row["tree"].as<std::string>();
+	tree = new LTree(row["tree"].as<std::string>());
 	w.commit();
 }
 
 Directory* Directory::Create(std::string name)
 {
 	pqxx::work w(*db);
-	r = new pqxx::result(w.exec("SELECT 1 from objects where tree ~ '" + tree + ".*{1}' and name="+w.quote(name) + " and userid=" + std::to_string(user->GetId())));
+	r = new pqxx::result(w.exec("SELECT 1 from objects where tree ~ '" + tree->Get() + ".*{1}' and name="+w.quote(name) + " and userid=" + std::to_string(user->GetId())));
 	if (!r->empty()) throw Error(Errors::OBJECT_EXIST);
 	
 	r = new pqxx::result(w.exec("SELECT nextval('objects_id_seq'::regclass)"));
 	auto row = r->begin();
 	unsigned int dir_id = row["nextval"].as<unsigned int>();
-	std::string new_tree = tree + "." + std::to_string(dir_id);
-	w.exec("INSERT INTO objects (id, name, is_dir, userid, tree) VALUES (" + std::to_string(dir_id) +", " + w.quote(name) + ",  true, " + std::to_string(user->GetId()) + ", " +w.quote(new_tree)+ ")");
+	LTree new_tree = tree->Child(dir_id);
+	w.exec("INSERT INTO objects (id, name, is_dir, userid, tree) VALUES (" + std::to_string(dir_id) +", " + w.quote(name) + ",  true, " + std::to_string(user->GetId()) + ", " +w.quote(new_tree.Get())+ ")");
 	w.commit();
 	
 	Directory *result = new Directory(db, user);
@@ -224,27 +225,35 @@ Directory* Directory::Create(unsigned int source_dirid, std::string name)
 Json::Value Directory::Ls()
 {
 	pqxx::work w(*db);
-	r = new pqxx::result(w.exec("SELECT id,name,is_dir from objects where tree ~ '" + tree + ".*{0,1}' and userid=" + std::to_string(user->GetId())));
-	if (r->empty()) 
-	{
-		std::cerr << "tree="+tree+" userid="+std::to_string(user->GetId());
-		throw Error(Errors::NOT_FOUND);
+
+	Json::Value result;
+
+	if (!tree->Is_root()) {
+		r = new pqxx::result(w.exec("SELECT id,name,is_dir from objects where tree ~ '" + tree->Parrent().Get() + ".*{0}' and userid=" + std::to_string(user->GetId())));
+		auto row = r->begin();
+		result["parrent"]["id"] = row["id"].as<unsigned int>();
+		result["parrent"]["name"] = row["name"].as<std::string>();
+		result["parrent"]["is_dir"] = row["is_dir"].as<bool>();
 	}
-	
-	Json::Value result(Json::arrayValue);
+
+	r = new pqxx::result(w.exec("SELECT id,name,is_dir from objects where tree ~ '" + tree->Get() + ".*{0}' and userid=" + std::to_string(user->GetId())));
+	auto row = r->begin();
+	result["id"] = row["id"].as<unsigned int>();
+	result["name"] = row["name"].as<std::string>();
+	result["is_dir"] = row["is_dir"].as<bool>();
+
+	r = new pqxx::result(w.exec("SELECT id,name,is_dir from objects where tree ~ '" + tree->Get() + ".*{1}' and userid=" + std::to_string(user->GetId())));
+	Json::Value children(Json::arrayValue);
 	int i=0;
-	//~ result[i]["id"] = Id;
-	//~ result[i]["name"] = ".";
-	//~ result[i]["is_dir"] = true;
-	//~ ++i;
 	for (auto row = r->begin(); row != r->end(); ++row)
 	{
-		result[i]["id"] = row["id"].as<unsigned int>();
-		result[i]["name"] = row["name"].as<std::string>();
-		result[i]["is_dir"] = row["is_dir"].as<bool>();
+		children[i]["id"] = row["id"].as<unsigned int>();
+		children[i]["name"] = row["name"].as<std::string>();
+		children[i]["is_dir"] = row["is_dir"].as<bool>();
 		++i;
 	}
 	w.commit();
+	result["children"] = children;
 	return result;
 }
 
@@ -259,16 +268,16 @@ void Directory::Del(unsigned int _dirid)
 {
 	Chdir(_dirid);
 	pqxx::work w(*db);
-	r = new pqxx::result(w.exec("SELECT id,name,is_dir from objects where tree ~ '" + tree + ".*{0,1}' and userid=" + std::to_string(user->GetId())));
+	r = new pqxx::result(w.exec("SELECT id,name,is_dir from objects where tree ~ '" + tree->Get() + ".*{0,1}' and userid=" + std::to_string(user->GetId())));
 	if (r->empty()) 
 	{
-		std::cerr << "tree="+tree+" userid="+std::to_string(user->GetId());
+		std::cerr << "tree="+tree->Get()+" userid="+std::to_string(user->GetId());
 		throw Error(Errors::NOT_FOUND);
 	}
 
 	if (r->size() > 1 ) throw Error(Errors::DIR_NOTEMPTY);
 	
-	w.exec("DELETE from objects where tree ~ '" + tree + ".*{0,1}' and userid=" + std::to_string(user->GetId()));
+	w.exec("DELETE from objects where tree ~ '" + tree->Get() + ".*{0,1}' and userid=" + std::to_string(user->GetId()));
 	w.commit();
 	
 }
@@ -277,16 +286,16 @@ void Directory::Del(unsigned int _dirid)
 void Directory::Chdir(unsigned int _id)
 {
 	pqxx::work w(*db);
-	r = new pqxx::result(w.exec("SELECT tree from objects where is_dir and id=" + std::to_string(_id)));
+	r = new pqxx::result(w.exec("SELECT tree from objects where is_dir and id=" + std::to_string(_id) + " and userid=" + std::to_string(user->GetId() ) ) );
 	if (r->empty()) throw Error(Errors::NOT_FOUND);
 	
 	auto row = r->begin();
-	tree = row["tree"].as<std::string>();
+	tree = new LTree(row["tree"].as<std::string>());
 	Id = _id;
 	w.commit();
 }
 
-std::string Directory::GetTree()
+LTree* Directory::GetTree()
 {
 	return tree;
 }
@@ -425,6 +434,7 @@ std::string Base_Object::sha256(std::string str)
 	return output;
 }
 
+
 std::string Base_Object::random_string( size_t length )
 {
     auto randchar = []() -> char
@@ -450,3 +460,79 @@ unsigned int User::GetDir()
 {
 	return root_dirId;
 }
+
+LTree::LTree(std::string _tree)
+{
+	boost::split(tree,_tree,boost::is_any_of("."));
+}
+
+LTree::LTree(std::vector<std::string> _tree)
+{
+	tree = _tree;
+}
+
+LTree LTree::Child(int _id)
+{
+	std::string s_id = std::to_string(_id);
+	return Child(s_id);
+}
+
+
+LTree LTree::Child(std::string _id)
+{
+	std::vector<std::string> new_tree = tree;
+	new_tree.push_back(_id);
+	LTree new_obj(new_tree);
+	return new_obj;
+}
+
+bool LTree::Is_root()
+{
+	return (tree.size() == 1) ? true : false;
+}
+
+LTree LTree::Root()
+{
+	std::vector<std::string> new_tree;
+	new_tree.push_back(*(tree.begin()));
+	LTree new_obj(new_tree);
+	return new_obj;
+}
+
+
+std::string LTree::Get()
+{
+	return join(tree,".");
+}
+
+int LTree::Id()
+{
+	const char* value = tree.back().c_str();
+    char* end;
+    long n = strtol(value, &end, 0);
+    return end > value ? n : 0;
+}
+
+LTree LTree::Parrent() {
+	std::vector<std::string> new_tree = tree;
+	if (new_tree.size() > 1 ) new_tree.pop_back();
+	LTree new_obj(new_tree);
+	return new_obj;
+}
+
+std::string LTree::join( std::vector<std::string>& elements, std::string delimiter )
+  {
+    std::stringstream ss;
+    size_t elems = elements.size(),
+           last = elems - 1;
+
+    for( size_t i = 0; i < elems; ++i )
+    {
+      ss << elements[i];
+
+     if( i != last )
+       ss << delimiter;
+   }
+
+   return ss.str();
+ }
