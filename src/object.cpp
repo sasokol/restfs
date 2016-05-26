@@ -1,6 +1,10 @@
 #include "object.hpp"
 #include "error.hpp"
 
+#include <boost/foreach.hpp>
+#include <boost/tokenizer.hpp>
+#include <boost/lexical_cast.hpp>
+
 File::File(Router *_r, User *_user) 
 {
 	router = _r;
@@ -194,7 +198,7 @@ void Directory::SetTree()
 	r = new pqxx::result(w.exec("SELECT tree FROM objects where id=" + std::to_string(Id) + " and userid=" +  std::to_string(user->GetId() )));
 	if (r->empty()) throw Error(Errors::NOT_FOUND);
 	auto row = r->begin();
-	tree = new LTree(row["tree"].as<std::string>());
+	tree = new LTree<int>(row["tree"].as<std::string>());
 	w.commit();
 }
 
@@ -207,7 +211,7 @@ Directory* Directory::Create(std::string name)
 	r = new pqxx::result(w.exec("SELECT nextval('objects_id_seq'::regclass)"));
 	auto row = r->begin();
 	unsigned int dir_id = row["nextval"].as<unsigned int>();
-	LTree new_tree = tree->Child(dir_id);
+	LTree<int> new_tree = tree->Child(dir_id);
 	w.exec("INSERT INTO objects (id, name, is_dir, userid, tree) VALUES (" + std::to_string(dir_id) +", " + w.quote(name) + ",  true, " + std::to_string(user->GetId()) + ", " +w.quote(new_tree.Get())+ ")");
 	w.commit();
 	
@@ -290,12 +294,12 @@ void Directory::Chdir(unsigned int _id)
 	if (r->empty()) throw Error(Errors::NOT_FOUND);
 	
 	auto row = r->begin();
-	tree = new LTree(row["tree"].as<std::string>());
+	tree = new LTree<int>(row["tree"].as<std::string>());
 	Id = _id;
 	w.commit();
 }
 
-LTree* Directory::GetTree()
+LTree<int>* Directory::GetTree()
 {
 	return tree;
 }
@@ -461,66 +465,62 @@ unsigned int User::GetDir()
 	return root_dirId;
 }
 
-LTree::LTree(std::string _tree)
+template<class C> LTree<C>::LTree(std::string _tree)
 {
-	boost::split(tree,_tree,boost::is_any_of("."));
+	boost::char_separator<char> sep(".");
+	boost::tokenizer<boost::char_separator<char> > tokens(_tree, sep);
+	BOOST_FOREACH(std::string t, tokens)
+	{
+		tree.push_back(boost::lexical_cast<C>(t));
+	}
 }
 
-LTree::LTree(std::vector<std::string> _tree)
+template<class C> LTree<C>::LTree(std::vector<C> _tree)
 {
 	tree = _tree;
 }
 
-LTree LTree::Child(int _id)
+template<class C> LTree<C> LTree<C>::Child(C _id)
 {
-	std::string s_id = std::to_string(_id);
-	return Child(s_id);
-}
-
-
-LTree LTree::Child(std::string _id)
-{
-	std::vector<std::string> new_tree = tree;
+	std::vector<C> new_tree = tree;
 	new_tree.push_back(_id);
-	LTree new_obj(new_tree);
+	LTree<C> new_obj(new_tree);
 	return new_obj;
 }
 
-bool LTree::Is_root()
+template<class C> bool LTree<C>::Is_root()
 {
 	return (tree.size() == 1) ? true : false;
 }
 
-LTree LTree::Root()
+template<class C> LTree<C> LTree<C>::Root()
 {
-	std::vector<std::string> new_tree;
+	std::vector<C> new_tree;
 	new_tree.push_back(*(tree.begin()));
-	LTree new_obj(new_tree);
+	LTree<C> new_obj(new_tree);
 	return new_obj;
 }
 
 
-std::string LTree::Get()
+template<class C> std::string LTree<C>::Get()
 {
 	return join(tree,".");
 }
 
-int LTree::Id()
+template<class C> C LTree<C>::Id()
 {
-	const char* value = tree.back().c_str();
-    char* end;
-    long n = strtol(value, &end, 0);
-    return end > value ? n : 0;
+    return tree.back();
 }
 
-LTree LTree::Parrent() {
-	std::vector<std::string> new_tree = tree;
+template<class C> LTree<C> LTree<C>::Parrent() {
+	std::vector<C> new_tree = tree;
 	if (new_tree.size() > 1 ) new_tree.pop_back();
 	LTree new_obj(new_tree);
 	return new_obj;
 }
 
-std::string LTree::join( std::vector<std::string>& elements, std::string delimiter )
+template<typename C>
+std::string LTree<C>::join( std::vector<C>& elements, std::string delimiter )
   {
     std::stringstream ss;
     size_t elems = elements.size(),

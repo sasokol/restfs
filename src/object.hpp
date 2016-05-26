@@ -69,22 +69,22 @@ class User: public Base_Object
 	
 };
 
+template<class C>
 class LTree
 {
 	private:
-		std::vector<std::string> tree;
-		std::string join( std::vector<std::string>& elements, std::string delimiter );
-		LTree(std::vector<std::string> _tree);
+		std::vector<C> tree;
+		std::string join( std::vector<C>& elements, std::string delimiter );
+		LTree(std::vector<C> _tree);
 
 	public:
-		LTree(std::string _tree);
-		LTree Parrent();
-		LTree Root();
-		LTree Child(std::string);
-		LTree Child(int);
+		LTree<C>(std::string _tree);
+		LTree<C> Parrent();
+		LTree<C> Root();
+		LTree<C> Child(C);
 		bool Is_root();
 		std::string Get();
-		int Id();
+		C Id();
 };
 
 
@@ -100,13 +100,13 @@ class Directory: public Base_Object
 		Json::Value Ls();
 		Json::Value Ls(unsigned int source_dirid);
 		void Del(unsigned int _dirid);
-		LTree* GetTree();
+		LTree<int>* GetTree();
 		
 	private:
 		pqxx::connection* db;
 		pqxx::result *r;
 		User *user;
-		LTree *tree;
+		LTree<int> *tree;
 		unsigned int Id;
 		
 		void SetTree();
